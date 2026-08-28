@@ -28,7 +28,7 @@ struct MenuBarRemoteView: View {
                 VolumeControl()
                 InputPicker(minimumTileWidth: 110)
             case .keypad:
-                KeypadView()
+                KeypadView(compact: true)
             }
 
             if let error = controller.lastError {

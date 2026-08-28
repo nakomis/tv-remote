@@ -158,6 +158,21 @@ actor SSAPClient {
         try await transmit(Self.encode(message))
     }
 
+    /// Asks the TV for the URL of its pointer input socket.
+    ///
+    /// Answers `401 insufficient permissions` unless the pairing granted
+    /// `CONTROL_MOUSE_AND_KEYBOARD` — see `Config.manifestRevision`.
+    func pointerInputSocketPath() async throws -> URL {
+        struct Payload: Decodable { let socketPath: String? }
+        let reply = try await request(SSAP.getPointerInputSocket)
+        guard let decoded = try? JSONDecoder().decode(Payload.self, from: reply.payload),
+              let path = decoded.socketPath,
+              let url = URL(string: path) else {
+            throw Failure.rejected("The TV did not return a pointer input socket.")
+        }
+        return url
+    }
+
     // MARK: - Plumbing
 
     private func makeID(prefix: String) -> String {
@@ -305,7 +320,7 @@ actor SSAPClient {
 /// always fails. This is only reached for the TLS port, on a LAN address the
 /// user configured by hand; the alternative is not encryption but no
 /// connection at all.
-private final class TrustLocalTVDelegate: NSObject, URLSessionDelegate, Sendable {
+final class TrustLocalTVDelegate: NSObject, URLSessionDelegate, Sendable {
     func urlSession(
         _ session: URLSession,
         didReceive challenge: URLAuthenticationChallenge,

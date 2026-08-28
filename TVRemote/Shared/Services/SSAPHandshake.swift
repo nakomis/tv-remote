@@ -60,6 +60,14 @@ enum SSAPHandshake {
             "READ_CURRENT_CHANNEL", "READ_INPUT_DEVICE_LIST",
             "READ_NETWORK_STATE", "READ_RUNNING_APPS", "READ_TV_CHANNEL_LIST",
             "WRITE_NOTIFICATION_TOAST", "READ_POWER_STATE", "READ_COUNTRY_INFO",
+            // Required for the pointer input socket, and easy to miss: both
+            // appear in `signed.permissions` above, but that block is part of
+            // LG's test certificate and is not what the TV grants against.
+            // Only this list is. Without them,
+            // ssap://com.webos.service.networkinput/getPointerInputSocket
+            // answers "401 insufficient permissions" while every other call
+            // works normally. Verified against a B3 on 2026-08-28.
+            "CONTROL_MOUSE_AND_KEYBOARD", "CONTROL_INPUT_TEXT",
         ],
         "signatures": [[
             "signatureVersion": 1,
@@ -79,4 +87,8 @@ enum SSAP {
     static let getExternalInputList = "ssap://tv/getExternalInputList"
     static let switchInput = "ssap://tv/switchInput"
     static let getForegroundAppInfo = "ssap://com.webos.applicationManager/getForegroundAppInfo"
+    static let getPointerInputSocket = "ssap://com.webos.service.networkinput/getPointerInputSocket"
+    static let insertText = "ssap://com.webos.service.ime/insertText"
+    static let deleteCharacters = "ssap://com.webos.service.ime/deleteCharacters"
+    static let sendEnterKey = "ssap://com.webos.service.ime/sendEnterKey"
 }

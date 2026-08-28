@@ -9,6 +9,12 @@ import Security
 /// `UserDefaults`.
 enum KeychainStore {
 
+    /// The keychain account for a TV, scoped to the manifest revision the key
+    /// was issued under. See `Config.manifestRevision`.
+    static func account(forHost host: String) -> String {
+        "\(host)#manifest\(Config.manifestRevision)"
+    }
+
     static func loadClientKey(account: String) -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,

@@ -21,6 +21,7 @@ final class TVController {
 
     private let settings: TVSettings
     private let client = SSAPClient()
+    private let pointer = PointerInputClient()
 
     init(settings: TVSettings) {
         self.settings = settings
@@ -36,7 +37,7 @@ final class TVController {
         }
 
         state = .connecting
-        let account = settings.host
+        let account = KeychainStore.account(forHost: settings.host)
 
         do {
             let key = try await client.connect(
@@ -60,6 +61,7 @@ final class TVController {
     }
 
     func disconnect() async {
+        await pointer.disconnect()
         await client.disconnect()
         state = .disconnected
     }
@@ -209,26 +211,61 @@ final class TVController {
 
     // MARK: - Keypad
 
-    /// Sends a remote-control button press.
+    /// Sends a remote-control button press over the pointer input socket.
     ///
-    /// Not yet working, and deliberately loud about why rather than doing
-    /// nothing: these go over a *second* WebSocket, obtained from
-    /// `ssap://com.webos.service.networkinput/getPointerInputSocket`, and on
-    /// webOS 23 that request comes back `401 insufficient permissions` for a
-    /// client registered with the manifest in `SSAPHandshake`. Verified
-    /// against the B3 on 2026-08-28, for both `request` and `subscribe`.
-    ///
-    /// Making it work means requesting more permissions in the manifest and
-    /// re-pairing, then managing the second socket's lifecycle — tracked as
-    /// TVRM-2. When that lands, only this method changes; `KeypadView` calls
-    /// it already.
+    /// The socket is opened lazily on first use and kept for the life of the
+    /// SSAP connection: asking for a fresh one per key press works, but adds a
+    /// round trip to every button and makes held-down repeats feel awful.
     func sendKey(_ key: KeypadKey) async {
-        lastError = """
-            \(key.title) is not wired up yet. Remote keys travel over the SSAP \
-            pointer input socket, which this TV refuses with "401 insufficient \
-            permissions" for our current pairing. Fixing that needs a wider \
-            permission manifest and a re-pair (TVRM-2).
-            """
+        await perform("sending \(key.title)") {
+            try await self.withPointerSocket { pointer in
+                try await pointer.send(button: key.command)
+            }
+        }
+    }
+
+    /// Types text into whatever field the TV currently has focused.
+    ///
+    /// This one is ordinary SSAP, not the pointer socket — different
+    /// transport, same `CONTROL_INPUT_TEXT` permission.
+    func insertText(_ text: String) async {
+        guard !text.isEmpty else { return }
+        await perform("typing") {
+            try await self.client.request(
+                SSAP.insertText,
+                payload: ["text": text, "replace": false]
+            )
+        }
+    }
+
+    func deleteCharacters(_ count: Int = 1) async {
+        await perform("deleting") {
+            try await self.client.request(SSAP.deleteCharacters, payload: ["count": count])
+        }
+    }
+
+    func sendEnterKey() async {
+        await perform("confirming the text") {
+            try await self.client.request(SSAP.sendEnterKey)
+        }
+    }
+
+    /// Runs `body` against a connected pointer socket, opening one if needed
+    /// and reopening once if the existing one has died underneath us.
+    private func withPointerSocket(
+        _ body: (PointerInputClient) async throws -> Void
+    ) async throws {
+        if await !pointer.isConnected {
+            try await pointer.connect(to: client.pointerInputSocketPath())
+        }
+        do {
+            try await body(pointer)
+        } catch SSAPClient.Failure.transport, SSAPClient.Failure.notConnected {
+            // The socket had gone. Get a fresh path and try once more, since
+            // the TV invalidates it across standby.
+            try await pointer.connect(to: client.pointerInputSocketPath())
+            try await body(pointer)
+        }
     }
 
     // MARK: - Helpers
