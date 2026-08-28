@@ -23,6 +23,7 @@ final class TVController {
     private let settings: TVSettings
     private let client = SSAPClient()
     private let pointer = PointerInputClient()
+    private var watcher: Task<Void, Never>?
 
     init(settings: TVSettings) {
         self.settings = settings
@@ -30,11 +31,29 @@ final class TVController {
 
     // MARK: - Connection
 
+    /// Connects, unless something already is.
+    ///
+    /// The guard keeps the app's several connection triggers — launch, coming
+    /// back from the background, the Retry button — from racing each other.
+    /// It deliberately does *not* apply to `powerOn`, which drives its own
+    /// retry loop; see `establishConnection`.
     func connect() async {
         guard !state.isBusy, !state.isConnected else { return }
+        await establishConnection(reportingFailure: true)
+    }
+
+    /// One connection attempt, with no "already busy" guard.
+    ///
+    /// - Parameter reportingFailure: whether a failure should be published to
+    ///   the UI. `powerOn` passes `false`, because a refused connection two
+    ///   seconds after a magic packet is expected — the TV simply is not up
+    ///   yet — and flashing an error on each attempt would be nonsense.
+    /// - Returns: whether the TV is now connected.
+    @discardableResult
+    private func establishConnection(reportingFailure: Bool) async -> Bool {
         guard let url = settings.socketURL else {
             state = .failed("The TV address is not valid.")
-            return
+            return false
         }
 
         state = .connecting
@@ -48,16 +67,25 @@ final class TVController {
                     Task { @MainActor in self?.state = .pairing }
                 }
             )
-            KeychainStore.saveClientKey(key, account: account)
+            // A failed save is not cosmetic: it means the TV will re-prompt on
+            // the next launch, and previously that happened silently.
+            let saved = KeychainStore.saveClientKey(key, account: account)
+            if saved != errSecSuccess {
+                lastError = "Paired, but the key could not be saved (keychain error \(saved)). The TV will ask again next time."
+            } else {
+                KeychainStore.purgeSupersededKeys(forHost: settings.host)
+            }
             state = .connected
             await refreshEverything()
+            return true
         } catch {
             // A stale key is rejected outright. Drop it so the next attempt
             // falls back to the on-screen prompt rather than failing forever.
             if case SSAPClient.Failure.rejected = error {
                 KeychainStore.deleteClientKey(account: account)
             }
-            state = .failed(error.localizedDescription)
+            state = reportingFailure ? .failed(error.localizedDescription) : .connecting
+            return false
         }
     }
 
@@ -76,6 +104,32 @@ final class TVController {
         await connect()
     }
 
+    /// Watches for the television coming back while the app sits open.
+    ///
+    /// Without this there is no route back to connected: reconnection was
+    /// only ever triggered by launching or by returning from the background,
+    /// so a device left on screen while the TV was turned off elsewhere — and
+    /// then turned on again elsewhere — stayed showing it as off indefinitely.
+    ///
+    /// Cheap because it only probes while disconnected, and stops the moment
+    /// it succeeds.
+    func startWatchingForTV() {
+        guard watcher == nil else { return }
+        watcher = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: Config.reconnectPollInterval)
+                guard let self else { return }
+                guard !self.state.isConnected, !self.state.isBusy, !self.isWaking else { continue }
+                await self.establishConnection(reportingFailure: false)
+            }
+        }
+    }
+
+    func stopWatchingForTV() {
+        watcher?.cancel()
+        watcher = nil
+    }
+
     private func refreshEverything() async {
         await subscribeToPowerState()
         await subscribeToVolume()
@@ -91,6 +145,12 @@ final class TVController {
         isWaking = true
         defer { isWaking = false }
 
+        // Someone else may have turned it on already — another device, or the
+        // physical remote. Broadcasting first and then waiting two seconds to
+        // discover that is pure latency, and it is exactly what happens when
+        // one device turns the set on and another is still showing it as off.
+        if await establishConnection(reportingFailure: false) { return }
+
         let targets: [String]
         do {
             targets = try await WakeOnLAN.wake(
@@ -103,14 +163,19 @@ final class TVController {
             return
         }
 
-        // The set takes several seconds to bring its network stack up. Retry
-        // the connection rather than guessing a single fixed delay.
+        // The set takes several seconds to bring its network stack up, so
+        // retry rather than guessing a single fixed delay.
+        //
+        // This calls `establishConnection` and NOT `connect()`. `connect()`
+        // refuses to run while `state.isBusy`, and the state during this loop
+        // is `.connecting`, which is busy — so calling it here would return
+        // immediately every time, wait out the whole timeout, and then report
+        // that the TV had not woken while it was sitting there happily awake.
         let deadline = ContinuousClock.now.advanced(by: Config.wakeTimeout)
         state = .connecting
         while ContinuousClock.now < deadline {
             try? await Task.sleep(for: .seconds(2))
-            await connect()
-            if state.isConnected { return }
+            if await establishConnection(reportingFailure: false) { return }
             if case .pairing = state { return }
         }
         // Name the addresses actually used: a magic packet that goes nowhere

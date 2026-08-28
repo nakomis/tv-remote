@@ -6,15 +6,27 @@ struct RemoteView: View {
 
     @State private var showingSettings = false
 
+    private enum Panel {
+        case controls, keypad
+    }
+
+    @State private var panel: Panel = .controls
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 18) {
                     StatusBadge()
-                    PowerControls()
-                    VolumeControl()
-                    InputPicker()
+                    switch panel {
+                    case .controls:
+                        PowerControls()
+                        VolumeControl()
+                        InputPicker()
+                    case .keypad:
+                        KeypadView()
+                    }
                 }
+                .animation(.easeInOut(duration: 0.18), value: panel)
                 .padding(.horizontal, 18)
                 .padding(.vertical, 12)
                 .frame(maxWidth: 520)
@@ -24,6 +36,16 @@ struct RemoteView: View {
             .scrollContentBackground(.hidden)
             .navigationTitle("TV")
             .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        panel = panel == .keypad ? .controls : .keypad
+                    } label: {
+                        Label(
+                            panel == .keypad ? "Show the controls" : "Show the keypad",
+                            systemImage: panel == .keypad ? "slider.horizontal.3" : "keyboard"
+                        )
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showingSettings = true
@@ -46,7 +68,10 @@ struct RemoteView: View {
                 .preferredColorScheme(.dark)
             }
         }
-        .task { await controller.connect() }
+        .task {
+            await controller.connect()
+            controller.startWatchingForTV()
+        }
         .onChange(of: scenePhase) { _, phase in
             // Coming back from the background, the socket is usually dead.
             if phase == .active {

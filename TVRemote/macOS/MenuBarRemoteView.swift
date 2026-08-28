@@ -39,7 +39,10 @@ struct MenuBarRemoteView: View {
         .frame(width: 320)
         .background(Theme.background)
         .animation(.easeInOut(duration: 0.18), value: panel)
-        .task { await controller.connect() }
+        .task {
+            await controller.connect()
+            controller.startWatchingForTV()
+        }
     }
 
     private var header: some View {

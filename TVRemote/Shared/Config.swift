@@ -68,6 +68,12 @@ enum Config {
 
     // MARK: - Identity
 
+    /// How often a disconnected app re-checks whether the TV has come back.
+    ///
+    /// Only runs while disconnected, so this is not a busy poll against a
+    /// working connection.
+    static let reconnectPollInterval: Duration = .seconds(5)
+
     /// Shown on the TV's pairing prompt and in its list of connected devices.
     static let clientName = "TV Remote"
 
