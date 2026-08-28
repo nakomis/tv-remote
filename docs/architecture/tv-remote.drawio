@@ -1,0 +1,91 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="tv-remote" name="tv-remote">
+    <mxGraphModel dx="1200" dy="800" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="ios" value="iPhone / iPad — TVRemote" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#f5f5f5;strokeColor=#9e9e9e;fontStyle=1;fontSize=14;arcSize=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="400" height="470" as="geometry" />
+        </mxCell>
+        <mxCell id="views" value="SwiftUI views&#10;RemoteView · VolumeControl · InputPicker" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="70" y="80" width="340" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="settings" value="Settings&#10;UserDefaults overrides over Config.swift" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="70" y="170" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="controller" value="TVController&#10;observable state, user intent" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="250" y="170" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="wol" value="WakeOnLAN&#10;builds the 102-byte magic packet" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="70" y="270" width="150" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ssap" value="SSAPClient&#10;WebSocket, id-keyed pending request table" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="250" y="270" width="160" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="keychain" value="Keychain&#10;client-key" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=12;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="270" y="390" width="120" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lan" value="Home LAN — 172.29.0.0/24" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=none;strokeColor=#9e9e9e;dashed=1;fontStyle=1;fontSize=14;arcSize=6;" vertex="1" parent="1">
+          <mxGeometry x="490" y="240" width="180" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="broadcast" value="Broadcast&#10;172.29.0.255 : 9" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="510" y="280" width="140" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="tv" value="LG B3 OLED — webOS 23 — 172.29.0.19" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#f5f5f5;strokeColor=#9e9e9e;fontStyle=1;fontSize=14;arcSize=6;" vertex="1" parent="1">
+          <mxGeometry x="720" y="120" width="330" height="330" as="geometry" />
+        </mxCell>
+        <mxCell id="nic" value="Network interface&#10;powered even in standby" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="760" y="270" width="250" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="svc" value="SSAP services&#10;audio · tv · system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="760" y="160" width="250" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" edge="1" parent="1" source="views" target="controller">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" edge="1" parent="1" source="settings" target="controller">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="power on" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;" edge="1" parent="1" source="controller" target="wol">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="off · volume · input" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;" edge="1" parent="1" source="controller" target="ssap">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;startArrow=classic;startFill=1;" edge="1" parent="1" source="ssap" target="keychain">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" value="UDP magic packet" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;strokeColor=#d79b00;" edge="1" parent="1" source="wol" target="broadcast">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#d79b00;" edge="1" parent="1" source="broadcast" target="nic">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" value="wakes the set" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;strokeColor=#b85450;" edge="1" parent="1" source="nic" target="svc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" value="ws://…:3000&#10;JSON over WebSocket" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;startArrow=classic;startFill=1;strokeColor=#6c8ebf;" edge="1" parent="1" source="ssap" target="svc">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="470" y="305" />
+              <mxPoint x="470" y="90" />
+              <mxPoint x="885" y="90" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e10" value="ssap://audio/getVolume&#10;pushed on every change" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;dashed=1;strokeColor=#82b366;" edge="1" parent="1" source="svc" target="ssap">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="885" y="530" />
+              <mxPoint x="330" y="530" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Check out the post-merge state on PRs so CI validates what will land on main,
+# not just the branch tip.
+env:
+  CHECKOUT_REF: ${{ github.event_name == 'pull_request' && format('refs/pull/{0}/merge', github.event.pull_request.number) || github.sha }}
+
+jobs:
+  test:
+    name: Build and test
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CHECKOUT_REF }}
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate the Xcode project
+        run: xcodegen generate
+
+      # Pick whichever iOS simulator this runner image actually ships, rather
+      # than pinning a device name that silently disappears on image bumps.
+      - name: Choose a simulator
+        id: sim
+        run: |
+          UDID=$(xcrun simctl list devices available --json \
+            | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(dev['udid'] for rt in sorted(d) if 'iOS' in rt for dev in d[rt]))")
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+
+      - name: Test — iOS
+        run: |
+          xcodebuild test \
+            -project TVRemote.xcodeproj \
+            -scheme TVRemote \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            CODE_SIGNING_ALLOWED=NO \
+            | xcpretty && exit ${PIPESTATUS[0]}
+
+      - name: Test — macOS
+        run: |
+          xcodebuild test \
+            -project TVRemote.xcodeproj \
+            -scheme TVRemoteMac \
+            -destination 'platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            | xcpretty && exit ${PIPESTATUS[0]}

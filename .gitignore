@@ -1,0 +1,39 @@
+# Planning
+PLAN.md
+
+# macOS
+.DS_Store
+
+# Xcode
+build/
+DerivedData/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# XcodeGen produces the project from project.yml — it is not source
+TVRemote.xcodeproj/
+
+# Swift Package Manager
+.swiftpm/
+.build/
+Packages/
+
+# Fastlane / signing
+*.mobileprovision
+*.p12
+*.certSigningRequest
+
+# Coverage
+coverage/
+lcov.info
+*.xcresult
+
+# probe.py caches the TV pairing key here
+scripts/.client-key
