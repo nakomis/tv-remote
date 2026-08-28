@@ -76,27 +76,80 @@ enum WakeOnLAN {
         }
         let ports: [NWEndpoint.Port] = [9, 7]
 
-        var lastFailure: String?
-        var delivered = false
+        // Sent concurrently, not in series. A target with no route now uses
+        // its whole timeout rather than failing fast, and six sequential
+        // three-second timeouts would leave the On button unresponsive for
+        // the better part of twenty seconds. In parallel the whole thing is
+        // bounded by one timeout.
+        let attempts = targets
+            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+            .flatMap { target in ports.map { (target, $0) } }
 
-        for target in targets where !target.trimmingCharacters(in: .whitespaces).isEmpty {
-            for port in ports {
-                do {
-                    try await send(packet, to: target, port: port)
-                    delivered = true
-                } catch {
-                    lastFailure = error.localizedDescription
+        let outcomes = await withTaskGroup(
+            of: (String, String?).self,
+            returning: [(String, String?)].self
+        ) { group in
+            for (target, port) in attempts {
+                group.addTask {
+                    do {
+                        try await send(packet, to: target, port: port)
+                        return (target, nil)
+                    } catch {
+                        return (target, error.localizedDescription)
+                    }
                 }
             }
+            var collected: [(String, String?)] = []
+            for await outcome in group { collected.append(outcome) }
+            return collected
         }
 
-        if !delivered {
-            throw Failure.sendFailed(lastFailure ?? "no route to the broadcast address")
+        var delivered: [String] = []
+        var lastFailure: String?
+        for (target, failure) in outcomes {
+            if let failure {
+                lastFailure = failure
+            } else if !delivered.contains(target) {
+                delivered.append(target)
+            }
         }
-        return targets
+        // Keep the caller's ordering rather than whichever task finished first.
+        delivered = targets.filter { delivered.contains($0) }
+
+        // Partial success is success: the global broadcast address in
+        // particular is refused on some networks while the subnet one works,
+        // and the packet only has to arrive once.
+        guard !delivered.isEmpty else {
+            throw Failure.sendFailed(
+                "\(lastFailure ?? "no route to the broadcast address") "
+                + "(tried \(targets.joined(separator: ", ")))"
+            )
+        }
+        return delivered
     }
 
+    /// How long to give one broadcast target before moving on.
+    ///
+    /// `NWConnection` does not fail when there is no route to a destination —
+    /// it sits in `.waiting` indefinitely, which on a phone is the normal
+    /// outcome for a subnet the device is not on. Without a bound, the
+    /// continuation below is never resumed and power-on hangs forever with a
+    /// spinner and no error.
+    private static let perTargetTimeout: Duration = .seconds(3)
+
     private static func send(_ packet: Data, to host: String, port: NWEndpoint.Port) async throws {
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask { try await sendWithoutTimeout(packet, to: host, port: port) }
+            group.addTask {
+                try await Task.sleep(for: perTargetTimeout)
+                throw Failure.sendFailed("no route to \(host):\(port.rawValue)")
+            }
+            try await group.next()
+            group.cancelAll()
+        }
+    }
+
+    private static func sendWithoutTimeout(_ packet: Data, to host: String, port: NWEndpoint.Port) async throws {
         let parameters = NWParameters.udp
         parameters.allowLocalEndpointReuse = true
         // Required for 255.255.255.255 and subnet broadcast: without it the
@@ -136,6 +189,14 @@ enum WakeOnLAN {
                     })
                 case .failed(let error):
                     finish(.failure(Failure.sendFailed(error.localizedDescription)))
+                case .waiting:
+                    // Deliberately NOT a failure. iOS passes through
+                    // `.waiting` on the way to `.ready` for a broadcast —
+                    // typically reporting ENETDOWN ("network is down") for a
+                    // moment while the route is brought up. Failing here
+                    // breaks every send on a phone. The timeout above is what
+                    // bounds a `.waiting` that never resolves.
+                    break
                 case .cancelled:
                     finish(.failure(Failure.sendFailed("connection cancelled")))
                 default:

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Declared explicitly so the pairing key lands in a group keyed by team
+	     and bundle id, rather than in whatever the default happens to be for
+	     the current signing identity. Without this the key does not survive a
+	     rebuild and the TV re-prompts on every install. -->
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)com.nakomis.tvremote</string>
+	</array>
+</dict>
+</plist>

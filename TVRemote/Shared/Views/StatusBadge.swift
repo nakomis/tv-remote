@@ -25,8 +25,13 @@ struct StatusBadge: View {
 
             Spacer(minLength: 0)
 
-            if case .failed = controller.state {
-                Button("Retry") { Task { await controller.connect() } }
+            // Offered on `.disconnected` too, not just `.failed`. A TV turned
+            // off from another device leaves this one merely disconnected, and
+            // without this there was no visible way back.
+            if !controller.state.isConnected, !controller.state.isBusy {
+                Button(case_failed(controller.state) ? "Retry" : "Connect") {
+                    Task { await controller.connect() }
+                }
                     .buttonStyle(.plain)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.accent)
@@ -47,6 +52,11 @@ struct StatusBadge: View {
             return controller.state.describedForHuman
         }
         return "\(controller.state.describedForHuman) · \(note)"
+    }
+
+    private func case_failed(_ state: ConnectionState) -> Bool {
+        if case .failed = state { return true }
+        return false
     }
 
     private var tint: Color {
