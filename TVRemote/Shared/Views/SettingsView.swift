@@ -39,7 +39,7 @@ struct SettingsForm: View {
                     }
                 }
                 Button("Forget pairing", role: .destructive) {
-                    KeychainStore.deleteClientKey(account: settings.host)
+                    KeychainStore.deleteClientKey(account: KeychainStore.account(forHost: settings.host))
                     Task { await controller.disconnect() }
                 }
             } footer: {

@@ -71,6 +71,18 @@ enum Config {
     /// Shown on the TV's pairing prompt and in its list of connected devices.
     static let clientName = "TV Remote"
 
+    /// Bumped whenever the permission list in `SSAPHandshake` changes.
+    ///
+    /// A `client-key` carries the permissions granted *at the moment it was
+    /// issued*; widening the manifest later does nothing for an existing key.
+    /// The stored key is filed under this revision, so raising it makes the
+    /// old key invisible and the next connection re-pairs with the current
+    /// permissions instead of failing with a 401 that looks like a bug.
+    ///
+    /// 2 — added CONTROL_MOUSE_AND_KEYBOARD and CONTROL_INPUT_TEXT for the
+    ///     pointer input socket (keypad).
+    static let manifestRevision = 2
+
     /// Keychain service under which the TV's `client-key` is stored. The key
     /// is issued once, on first pairing, and reused forever after — without
     /// it the TV re-prompts on every connection.
