@@ -207,6 +207,30 @@ final class TVController {
         }
     }
 
+    // MARK: - Keypad
+
+    /// Sends a remote-control button press.
+    ///
+    /// Not yet working, and deliberately loud about why rather than doing
+    /// nothing: these go over a *second* WebSocket, obtained from
+    /// `ssap://com.webos.service.networkinput/getPointerInputSocket`, and on
+    /// webOS 23 that request comes back `401 insufficient permissions` for a
+    /// client registered with the manifest in `SSAPHandshake`. Verified
+    /// against the B3 on 2026-08-28, for both `request` and `subscribe`.
+    ///
+    /// Making it work means requesting more permissions in the manifest and
+    /// re-pairing, then managing the second socket's lifecycle — tracked as
+    /// TVRM-2. When that lands, only this method changes; `KeypadView` calls
+    /// it already.
+    func sendKey(_ key: KeypadKey) async {
+        lastError = """
+            \(key.title) is not wired up yet. Remote keys travel over the SSAP \
+            pointer input socket, which this TV refuses with "401 insufficient \
+            permissions" for our current pairing. Fixing that needs a wider \
+            permission manifest and a re-pair (TVRM-2).
+            """
+    }
+
     // MARK: - Helpers
 
     private func perform(_ description: String, _ work: () async throws -> Void) async {
