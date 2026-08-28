@@ -1,5 +1,7 @@
 # tv-remote — an iPhone, iPad and Mac remote for an LG webOS television
 
+I couldn't find my TV remote, so I got Claude to vibe-code one
+
 ## Support
 
 If you find this useful, please consider buying me a coffee:
