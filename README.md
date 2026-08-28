@@ -18,6 +18,7 @@ If you find this useful, please consider buying me a coffee:
   * [Pairing](#pairing)
 - [Repository layout](#repository-layout)
 - [Configuration](#configuration)
+- [The icon](#the-icon)
 - [Appearance](#appearance)
 - [Building](#building)
 - [Distributing the Mac app](#distributing-the-mac-app)
@@ -148,6 +149,29 @@ To find the MAC of a TV that is currently awake:
 ```sh
 ping -c1 172.29.0.19 && arp -n 172.29.0.19
 ```
+
+## The icon
+
+`docs/icon/source-1024.png` is the artwork (generated with Seedream via
+fal.ai). `scripts/make-icons.py` turns it into both platforms' icon sets:
+
+```sh
+python3 scripts/make-icons.py docs/icon/source-1024.png
+```
+
+The two platforms want opposite things from the same picture, which is why
+this is a script rather than a drag into Xcode:
+
+- **iOS** needs a full-bleed square with no transparency and no rounded
+  corners — it applies its own mask, so a pre-rounded source gets rounded
+  twice and shows pale fringes.
+- **macOS** does not mask at all, so the shape has to be in the image: an
+  824x824 rounded plate centred on a 1024x1024 transparent canvas, per Apple's
+  icon grid.
+
+Generated artwork also tends to arrive as a rounded shape on a white page,
+which is wrong for both. The script detects that page's corner radius and
+replaces it with `Theme.background` before building either form.
 
 ## Appearance
 
