@@ -27,10 +27,10 @@
           <mxGeometry x="270" y="390" width="120" height="80" as="geometry" />
         </mxCell>
 
-        <mxCell id="lan" value="Home LAN — 172.29.0.0/24" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=none;strokeColor=#9e9e9e;dashed=1;fontStyle=1;fontSize=14;arcSize=6;" vertex="1" parent="1">
+        <mxCell id="lan" value="Home LAN — 172.29.0.0/16" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=none;strokeColor=#9e9e9e;dashed=1;fontStyle=1;fontSize=14;arcSize=6;" vertex="1" parent="1">
           <mxGeometry x="490" y="240" width="180" height="130" as="geometry" />
         </mxCell>
-        <mxCell id="broadcast" value="Broadcast&#10;172.29.0.255 : 9" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+        <mxCell id="broadcast" value="Broadcast&#10;172.29.255.255 : 9" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
           <mxGeometry x="510" y="280" width="140" height="70" as="geometry" />
         </mxCell>
 

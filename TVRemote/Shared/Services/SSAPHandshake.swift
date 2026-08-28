@@ -87,6 +87,7 @@ enum SSAP {
     static let getExternalInputList = "ssap://tv/getExternalInputList"
     static let switchInput = "ssap://tv/switchInput"
     static let getForegroundAppInfo = "ssap://com.webos.applicationManager/getForegroundAppInfo"
+    static let getPowerState = "ssap://com.webos.service.tvpower/power/getPowerState"
     static let getPointerInputSocket = "ssap://com.webos.service.networkinput/getPointerInputSocket"
     static let insertText = "ssap://com.webos.service.ime/insertText"
     static let deleteCharacters = "ssap://com.webos.service.ime/deleteCharacters"

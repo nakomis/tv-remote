@@ -133,14 +133,23 @@ project.yml    XcodeGen spec; the .xcodeproj is generated, not committed
 
 ## Configuration
 
-Everything deployment-specific lives in **`TVRemote/App/Config.swift`**:
+Everything deployment-specific lives in **`TVRemote/Shared/Config.swift`**:
 
 ```swift
 static let defaultHost      = "172.29.0.19"        // DHCP reservation on the router
 static let defaultMAC       = "20:28:bc:bb:5d:60"  // target of the magic packet
-static let defaultBroadcast = "172.29.0.255"       // where the magic packet is sent
+static let defaultBroadcast = "172.29.255.255"     // fallback only — see below
 static let defaultUseTLS    = true                 // wss://:3001; 3000 is dead on webOS 23
 ```
+
+> **`defaultBroadcast` is a fallback, not the operative value.** `WakeOnLAN`
+> asks the system for the broadcast address of whichever local interface is
+> actually on the TV's subnet, because the right answer depends on the netmask
+> and cannot be inferred from the TV's address alone. For a TV at
+> `172.29.0.19` it is `172.29.0.255` on a **/24** but `172.29.255.255` on a
+> **/16** — and getting it wrong fails silently, since an address that is not
+> a broadcast is treated as an ordinary unicast to a host that does not exist.
+> This constant is used only when no interface matches.
 
 Each is also overridable at runtime from the app's Settings screen, so a
 temporary change does not need a rebuild. Clearing a field restores the

@@ -17,7 +17,7 @@ struct StatusBadge: View {
                 }
                 .animation(.easeInOut, value: controller.state)
 
-            Text(controller.state.describedForHuman)
+            Text(statusText)
                 .font(.subheadline)
                 .foregroundStyle(Theme.mutedForeground)
                 .multilineTextAlignment(.leading)
@@ -38,6 +38,15 @@ struct StatusBadge: View {
         .overlay {
             RoundedRectangle(cornerRadius: Theme.cornerRadius).stroke(Theme.border, lineWidth: 1)
         }
+    }
+
+    /// "Connected", or "Connected · screen off" when the TV has something to
+    /// add. The note only ever appears while genuinely connected.
+    private var statusText: String {
+        guard controller.state.isConnected, let note = controller.powerState?.note else {
+            return controller.state.describedForHuman
+        }
+        return "\(controller.state.describedForHuman) · \(note)"
     }
 
     private var tint: Color {
