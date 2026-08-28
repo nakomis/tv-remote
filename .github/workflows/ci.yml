@@ -36,11 +36,20 @@ jobs:
             | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(dev['udid'] for rt in sorted(d) if 'iOS' in rt for dev in d[rt]))")
           echo "udid=$UDID" >> "$GITHUB_OUTPUT"
 
-      - name: Test
+      - name: Test — iOS
         run: |
           xcodebuild test \
             -project TVRemote.xcodeproj \
             -scheme TVRemote \
             -destination "id=${{ steps.sim.outputs.udid }}" \
+            CODE_SIGNING_ALLOWED=NO \
+            | xcpretty && exit ${PIPESTATUS[0]}
+
+      - name: Test — macOS
+        run: |
+          xcodebuild test \
+            -project TVRemote.xcodeproj \
+            -scheme TVRemoteMac \
+            -destination 'platform=macOS' \
             CODE_SIGNING_ALLOWED=NO \
             | xcpretty && exit ${PIPESTATUS[0]}
