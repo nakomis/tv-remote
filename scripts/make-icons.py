@@ -155,6 +155,14 @@ def main() -> int:
             "size": f"{points}x{points}",
         })
 
+    # An avatar for anywhere that wants a plain square image and applies its
+    # own cropping — the Taiga project logo, GitHub, and so on. Full-bleed
+    # like the iOS icon, since those surfaces round it themselves, but written
+    # beside the source artwork rather than into the app's asset catalogue.
+    avatar_dir = source.parent
+    build_ios(art).resize((512, 512), Image.LANCZOS).save(avatar_dir / "avatar-512.png")
+    print(f"wrote {avatar_dir / 'avatar-512.png'} (for Taiga / GitHub)")
+
     (iconset / "Contents.json").write_text(
         json.dumps({"images": images, "info": {"author": "xcode", "version": 1}}, indent=2) + "\n"
     )

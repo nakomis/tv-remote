@@ -15,6 +15,7 @@ final class TVController {
     private(set) var inputs: [TVInput] = []
     private(set) var currentInputID: String?
     private(set) var isWaking: Bool = false
+    private(set) var powerState: TVPowerState?
 
     /// Surfaced to the UI as a transient banner.
     var lastError: String?
@@ -64,6 +65,7 @@ final class TVController {
         await pointer.disconnect()
         await client.disconnect()
         state = .disconnected
+        powerState = nil
     }
 
     /// Reconnects if the socket has gone away, e.g. after the app was
@@ -75,6 +77,7 @@ final class TVController {
     }
 
     private func refreshEverything() async {
+        await subscribeToPowerState()
         await subscribeToVolume()
         await refreshInputs()
         await refreshCurrentInput()
@@ -123,6 +126,31 @@ final class TVController {
             try await self.client.request(SSAP.turnOff)
         }
         await disconnect()
+    }
+
+    /// Watches the TV's own power state rather than inferring it from the socket.
+    ///
+    /// webOS keeps the network stack up in states where the panel is dark, so
+    /// an open socket alone cannot tell "on" from "screen off" — and when
+    /// someone turns the set off with the physical remote, the socket lingers
+    /// until the next command fails. Subscribing means the TV tells us.
+    private func subscribeToPowerState() async {
+        struct PowerPayload: Decodable { let state: String? }
+
+        try? await client.subscribe(SSAP.getPowerState) { [weak self] reply in
+            guard let decoded = try? JSONDecoder().decode(PowerPayload.self, from: reply.payload),
+                  let reported = decoded.state else { return }
+            let power = TVPowerState(reported: reported)
+            Task { @MainActor in
+                self?.powerState = power
+                // The set is on its way down. Drop the connection now so the
+                // UI re-enables the On button, rather than showing Connected
+                // against a dark television until the next command times out.
+                if !power.isAwake {
+                    await self?.disconnect()
+                }
+            }
+        }
     }
 
     // MARK: - Volume
