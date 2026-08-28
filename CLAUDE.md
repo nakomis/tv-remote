@@ -1,7 +1,9 @@
 # tv-remote
 
-A SwiftUI iPhone/iPad remote for an LG B3 OLED (webOS 23): power on via
-Wake-on-LAN, power off / volume / mute / input switching via SSAP.
+SwiftUI remotes for an LG B3 OLED (webOS 23) — one iPhone/iPad app, one macOS
+menu bar app. Power on via Wake-on-LAN, power off / volume / mute / input
+switching via SSAP. Both share everything under `TVRemote/Shared`; only the
+app shell differs.
 
 ## The two protocols, and why
 
@@ -35,13 +37,27 @@ The TV is `172.29.0.19` (DHCP reservation), MAC `20:28:bc:bb:5d:60`.
 ## Repository layout
 
 ```
-TVRemote/App        Entry point + Config.swift
-TVRemote/Model      TVInput, ConnectionState, Settings
-TVRemote/Services   WakeOnLAN, SSAPClient, SSAPHandshake, KeychainStore, TVController
-TVRemote/Views      SwiftUI screens
-TVRemoteTests/      Swift Testing suites
+TVRemote/Shared     Config, Theme, Model, Services, and the shared views
+TVRemote/iOS        App entry point + navigation-stack shell
+TVRemote/macOS      App entry point + MenuBarExtra popover
+TVRemote/Resources  Info.plists (per platform), entitlements, assets
+TVRemoteTests/      Swift Testing suites, run against both platforms
 scripts/probe.py    Development aid: same handshake, dumps raw TV replies
+scripts/build-mac.sh Release build, signing, notarisation, packaging
 ```
+
+Shared sources are compiled into both app targets directly rather than via a
+framework target — for six services and five views that is ceremony without
+benefit.
+
+## Appearance
+
+Both apps run dark unconditionally — `.preferredColorScheme(.dark)`, no light
+variant. The palette in `Theme.swift` is nakostat's dark theme
+(`nakostat/web/src/index.css`) converted from OKLCH to sRGB. It is hueless
+apart from `--destructive`, so `Theme.positive` is that red hue-rotated at the
+same L and C. If the palette needs extending, derive from nakostat's tokens the
+same way rather than picking a colour by eye.
 
 ## Building
 
@@ -55,9 +71,18 @@ xcodegen generate
 ```sh
 xcodebuild build -project TVRemote.xcodeproj -scheme TVRemote \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
+
+xcodebuild build -project TVRemote.xcodeproj -scheme TVRemoteMac \
+  -destination 'platform=macOS'
 ```
 
-Team `62YFUFBSFX`, bundle id `com.nakomis.tvremote`, deployment target iOS 17.
+Team `62YFUFBSFX`, bundle id `com.nakomis.tvremote`, targets iOS 17 / macOS 14.
+
+`./scripts/build-mac.sh` packages the Mac app. It signs with a Developer ID
+Application certificate and notarises when both are available, and otherwise
+still produces a working bundle with instructions. A `.pkg` is not worth it:
+it needs its own Developer ID *Installer* certificate and its own notarisation
+for the same Gatekeeper outcome.
 
 ## Testing
 
@@ -81,6 +106,14 @@ The simulator shares the Mac's network, so it can reach the real TV.
 - A stale `client-key` is rejected outright; `TVController` deletes it on a
   `rejected` failure so the next attempt falls back to the pairing prompt
   instead of failing forever.
+- **Do not name anything `Settings`.** SwiftUI declares a `Settings` *scene* on
+  macOS, and a same-named class silently shadows it inside an `App` body; the
+  compiler error names neither type. Ours is `TVSettings`.
+- Both app targets set `PRODUCT_MODULE_NAME: TVRemote` so one test suite can
+  `@testable import TVRemote` on either platform. Do not override
+  `PRODUCT_NAME` on the Mac target either — the unit-test bundle derives
+  `TEST_HOST` from the target name and renaming the product breaks it. The
+  pretty name comes from `CFBundleDisplayName`.
 - webOS moved volume fields into a nested `volumeStatus` object in later
   releases but some models still send the flat ones. Both are read. The B3
   sends the nested form: `payload.volumeStatus.{volume,muteStatus}`.

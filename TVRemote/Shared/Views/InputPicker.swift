@@ -3,13 +3,16 @@ import SwiftUI
 struct InputPicker: View {
     @Environment(TVController.self) private var controller
 
-    private let columns = [GridItem(.adaptive(minimum: 140), spacing: 12)]
+    /// The tile width the grid adapts around. The menu bar popover is
+    /// narrower than a phone, so it asks for something tighter.
+    var minimumTileWidth: CGFloat = 140
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Label("Input", systemImage: "cable.connector")
                     .font(.headline)
+                    .foregroundStyle(Theme.foreground)
                 Spacer()
                 Button {
                     Task {
@@ -18,8 +21,11 @@ struct InputPicker: View {
                     }
                 } label: {
                     Image(systemName: "arrow.clockwise")
+                        .foregroundStyle(Theme.accent)
                 }
+                .buttonStyle(.plain)
                 .disabled(!controller.state.isConnected)
+                .accessibilityLabel("Refresh the input list")
             }
 
             if controller.inputs.isEmpty {
@@ -27,25 +33,28 @@ struct InputPicker: View {
                      ? "No inputs reported by the TV."
                      : "Connect to see the available inputs.")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.mutedForeground)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, 8)
+                    .padding(.vertical, 6)
             } else {
-                LazyVGrid(columns: columns, spacing: 12) {
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: minimumTileWidth), spacing: 10)],
+                    spacing: 10
+                ) {
                     ForEach(controller.inputs) { input in
-                        InputTile(
-                            input: input,
-                            isSelected: input.id == controller.currentInputID
-                        ) {
+                        InputTile(input: input, isSelected: input.id == controller.currentInputID) {
                             Task { await controller.switchInput(to: input) }
                         }
                     }
                 }
             }
         }
-        .padding(18)
-        .background(.background, in: RoundedRectangle(cornerRadius: 18))
-        .opacity(controller.state.isConnected ? 1 : 0.5)
+        .padding(16)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.cardRadius))
+        .overlay {
+            RoundedRectangle(cornerRadius: Theme.cardRadius).stroke(Theme.border, lineWidth: 1)
+        }
+        .opacity(controller.state.isConnected ? 1 : 0.45)
     }
 }
 
@@ -56,31 +65,33 @@ private struct InputTile: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 8) {
+            VStack(spacing: 6) {
                 Image(systemName: input.symbolName)
-                    .font(.title2)
+                    .font(.title3)
                 Text(input.label)
                     .font(.subheadline.weight(.medium))
                     .lineLimit(1)
+                    .minimumScaleFactor(0.75)
                 if !input.connected {
                     Text("Nothing attached")
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.ring)
                 }
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
+            .padding(.vertical, 13)
             .background(
-                isSelected ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.1),
-                in: RoundedRectangle(cornerRadius: 14)
+                isSelected ? Theme.accent.opacity(0.18) : Theme.raised,
+                in: RoundedRectangle(cornerRadius: Theme.cornerRadius)
             )
             .overlay {
-                RoundedRectangle(cornerRadius: 14)
-                    .stroke(isSelected ? Color.accentColor : .clear, lineWidth: 2)
+                RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                    .stroke(isSelected ? Theme.accent : Theme.border, lineWidth: isSelected ? 1.5 : 1)
             }
+            .foregroundStyle(isSelected ? Theme.accent : Theme.primary)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .foregroundStyle(isSelected ? Color.accentColor : .primary)
         .accessibilityLabel("Switch to \(input.label)")
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }

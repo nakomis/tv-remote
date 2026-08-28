@@ -3,6 +3,7 @@ options:
   bundleIdPrefix: com.nakomis
   deploymentTarget:
     iOS: "17.0"
+    macOS: "14.0"
   createIntermediateGroups: true
   groupSortPosition: top
 
@@ -16,11 +17,16 @@ settings:
     SWIFT_STRICT_CONCURRENCY: complete
 
 targets:
+  # Everything under Shared/ is compiled into both apps directly. A shared
+  # framework target would be tidier on paper, but for six services and five
+  # views it is ceremony without benefit.
   TVRemote:
     type: application
     platform: iOS
     sources:
-      - path: TVRemote
+      - path: TVRemote/Shared
+      - path: TVRemote/iOS
+      - path: TVRemote/Resources/Assets.xcassets
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nakomis.tvremote
@@ -29,6 +35,30 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
         SUPPORTS_MACCATALYST: NO
         ENABLE_PREVIEWS: YES
+
+  TVRemoteMac:
+    type: application
+    platform: macOS
+    sources:
+      - path: TVRemote/Shared
+      - path: TVRemote/macOS
+      - path: TVRemote/Resources/Assets.xcassets
+    settings:
+      base:
+        # Deliberately not overriding PRODUCT_NAME: the unit-test bundle's
+        # TEST_HOST is derived from the target name, so renaming the product
+        # breaks it. CFBundleDisplayName in the Info.plist already shows the
+        # app as "TV Remote", and scripts/build-mac.sh renames the bundle for
+        # distribution.
+        PRODUCT_BUNDLE_IDENTIFIER: com.nakomis.tvremote
+        # Same Swift module name as the iOS target so one set of tests can
+        # `@testable import TVRemote` on both platforms.
+        PRODUCT_MODULE_NAME: TVRemote
+        INFOPLIST_FILE: TVRemote/Resources/macOS/Info.plist
+        CODE_SIGN_ENTITLEMENTS: TVRemote/Resources/macOS/TVRemote.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_PREVIEWS: YES
+        ENABLE_HARDENED_RUNTIME: YES
 
   TVRemoteTests:
     type: bundle.unit-test
@@ -42,6 +72,18 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.nakomis.tvremote.tests
         GENERATE_INFOPLIST_FILE: YES
 
+  TVRemoteMacTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: TVRemoteTests
+    dependencies:
+      - target: TVRemoteMac
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.nakomis.tvremote.mactests
+        GENERATE_INFOPLIST_FILE: YES
+
 schemes:
   TVRemote:
     build:
@@ -53,7 +95,18 @@ schemes:
     test:
       config: Debug
       gatherCoverageData: true
-      coverageTargets:
-        - TVRemote
+      coverageTargets: [TVRemote]
+      targets: [TVRemoteTests]
+
+  TVRemoteMac:
+    build:
       targets:
-        - TVRemoteTests
+        TVRemoteMac: all
+        TVRemoteMacTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: true
+      coverageTargets: [TVRemoteMac]
+      targets: [TVRemoteMacTests]

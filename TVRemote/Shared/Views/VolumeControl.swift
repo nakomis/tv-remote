@@ -8,14 +8,15 @@ struct VolumeControl: View {
     @State private var scrubbing: Double?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Label("Volume", systemImage: "speaker.wave.2")
+                Label("Volume", systemImage: controller.isMuted ? "speaker.slash" : "speaker.wave.2")
                     .font(.headline)
+                    .foregroundStyle(Theme.foreground)
                 Spacer()
                 Text("\(displayedVolume)")
                     .font(.headline.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.mutedForeground)
             }
 
             Slider(
@@ -31,9 +32,10 @@ struct VolumeControl: View {
                     Task { await controller.setVolume(Int(value.rounded())) }
                 }
             )
+            .tint(Theme.accent)
             .disabled(!controller.state.isConnected)
 
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
                 stepButton("minus", label: "Volume down") {
                     Task { await controller.volumeDown() }
                 }
@@ -47,21 +49,26 @@ struct VolumeControl: View {
                         controller.isMuted ? "Unmute" : "Mute",
                         systemImage: controller.isMuted ? "speaker.slash.fill" : "speaker.fill"
                     )
+                    .font(.subheadline.weight(.medium))
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
+                    .padding(.vertical, 11)
                     .background(
-                        (controller.isMuted ? Color.orange : Color.secondary).opacity(0.15),
-                        in: RoundedRectangle(cornerRadius: 14)
+                        controller.isMuted ? Theme.destructive.opacity(0.16) : Theme.raised,
+                        in: RoundedRectangle(cornerRadius: Theme.cornerRadius)
                     )
+                    .foregroundStyle(controller.isMuted ? Theme.destructive : Theme.primary)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(controller.isMuted ? Color.orange : Color.primary)
                 .disabled(!controller.state.isConnected)
             }
         }
-        .padding(18)
-        .background(.background, in: RoundedRectangle(cornerRadius: 18))
-        .opacity(controller.state.isConnected ? 1 : 0.5)
+        .padding(16)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.cardRadius))
+        .overlay {
+            RoundedRectangle(cornerRadius: Theme.cardRadius).stroke(Theme.border, lineWidth: 1)
+        }
+        .opacity(controller.state.isConnected ? 1 : 0.45)
     }
 
     private var displayedVolume: Int {
@@ -71,13 +78,14 @@ struct VolumeControl: View {
     private func stepButton(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.title3.weight(.semibold))
+                .font(.body.weight(.semibold))
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(Color.secondary.opacity(0.15), in: RoundedRectangle(cornerRadius: 14))
+                .padding(.vertical, 11)
+                .background(Theme.raised, in: RoundedRectangle(cornerRadius: Theme.cornerRadius))
+                .foregroundStyle(Theme.primary)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .foregroundStyle(.primary)
         .disabled(!controller.state.isConnected)
         .accessibilityLabel(label)
     }

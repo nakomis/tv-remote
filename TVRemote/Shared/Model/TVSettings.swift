@@ -3,12 +3,16 @@ import Observation
 
 /// Runtime overrides for the values in `Config`, persisted to `UserDefaults`.
 ///
+/// Named `TVSettings` rather than `Settings` because SwiftUI declares a
+/// `Settings` *scene* on macOS. A class of the same name shadows it inside an
+/// `App` body, and the resulting error names neither type.
+///
 /// An empty or absent override means "use the compiled-in default", so
 /// clearing a field in the Settings screen restores the `Config` value rather
 /// than leaving the app pointing at nothing.
 @Observable
 @MainActor
-final class Settings {
+final class TVSettings {
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {

@@ -3,7 +3,7 @@ import Foundation
 @testable import TVRemote
 
 @MainActor
-struct SettingsTests {
+struct TVSettingsTests {
 
     private func isolatedDefaults() -> UserDefaults {
         let name = "tests.\(UUID().uuidString)"
@@ -14,7 +14,7 @@ struct SettingsTests {
 
     @Test("A fresh install uses the values compiled into Config")
     func defaultsComeFromConfig() {
-        let settings = Settings(defaults: isolatedDefaults())
+        let settings = TVSettings(defaults: isolatedDefaults())
         #expect(settings.host == Config.defaultHost)
         #expect(settings.mac == Config.defaultMAC)
         #expect(settings.broadcast == Config.defaultBroadcast)
@@ -24,26 +24,26 @@ struct SettingsTests {
     @Test("Overrides survive a restart")
     func overridesPersist() {
         let defaults = isolatedDefaults()
-        let first = Settings(defaults: defaults)
+        let first = TVSettings(defaults: defaults)
         first.host = "10.0.0.5"
 
-        let second = Settings(defaults: defaults)
+        let second = TVSettings(defaults: defaults)
         #expect(second.host == "10.0.0.5")
     }
 
     @Test("Clearing a field falls back to the Config default rather than empty")
     func clearingRestoresDefault() {
         let defaults = isolatedDefaults()
-        let settings = Settings(defaults: defaults)
+        let settings = TVSettings(defaults: defaults)
         settings.host = "10.0.0.5"
         settings.host = "   "
 
-        #expect(Settings(defaults: defaults).host == Config.defaultHost)
+        #expect(TVSettings(defaults: defaults).host == Config.defaultHost)
     }
 
     @Test("The socket URL follows the TLS toggle")
     func socketURLFollowsTLS() {
-        let settings = Settings(defaults: isolatedDefaults())
+        let settings = TVSettings(defaults: isolatedDefaults())
         settings.host = "10.0.0.5"
 
         settings.useTLS = false
@@ -56,7 +56,7 @@ struct SettingsTests {
     @Test("Restoring defaults clears every override")
     func resetClearsOverrides() {
         let defaults = isolatedDefaults()
-        let settings = Settings(defaults: defaults)
+        let settings = TVSettings(defaults: defaults)
         settings.host = "10.0.0.5"
         settings.mac = "aa:bb:cc:dd:ee:ff"
         settings.useTLS = true
@@ -66,6 +66,6 @@ struct SettingsTests {
         #expect(settings.host == Config.defaultHost)
         #expect(settings.mac == Config.defaultMAC)
         #expect(settings.useTLS == Config.defaultUseTLS)
-        #expect(Settings(defaults: defaults).host == Config.defaultHost)
+        #expect(TVSettings(defaults: defaults).host == Config.defaultHost)
     }
 }

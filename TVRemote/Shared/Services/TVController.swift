@@ -19,10 +19,10 @@ final class TVController {
     /// Surfaced to the UI as a transient banner.
     var lastError: String?
 
-    private let settings: Settings
+    private let settings: TVSettings
     private let client = SSAPClient()
 
-    init(settings: Settings) {
+    init(settings: TVSettings) {
         self.settings = settings
     }
 

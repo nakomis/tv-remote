@@ -9,18 +9,19 @@ struct RemoteView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 28) {
+                VStack(spacing: 18) {
                     StatusBadge()
                     PowerControls()
                     VolumeControl()
                     InputPicker()
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 12)
                 .frame(maxWidth: 520)
                 .frame(maxWidth: .infinity)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(Theme.background)
+            .scrollContentBackground(.hidden)
             .navigationTitle("TV")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -32,7 +33,17 @@ struct RemoteView: View {
                 }
             }
             .sheet(isPresented: $showingSettings) {
-                SettingsView()
+                NavigationStack {
+                    SettingsForm()
+                        .navigationTitle("Settings")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button("Done") { showingSettings = false }
+                            }
+                        }
+                }
+                .preferredColorScheme(.dark)
             }
         }
         .task { await controller.connect() }
@@ -54,11 +65,4 @@ struct RemoteView: View {
             Text(controller.lastError ?? "")
         }
     }
-}
-
-#Preview {
-    let settings = Settings()
-    return RemoteView()
-        .environment(settings)
-        .environment(TVController(settings: settings))
 }
