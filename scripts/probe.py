@@ -11,8 +11,12 @@ payload shapes were checked against a real set.
 The first run puts a pairing prompt on the TV; accept it with the physical
 remote. The client key is cached in scripts/.client-key so later runs are
 silent.
+
+Read-only: it issues no commands that change anything. Note that webOS flashes
+its on-screen volume bar whenever setVolume is called at all, even with the
+value the TV is already at, so seeing the overlay does not mean the level moved.
 """
-import asyncio, json, pathlib, sys
+import asyncio, json, pathlib, ssl, sys
 import websockets
 
 HOST = sys.argv[1] if len(sys.argv) > 1 else "172.29.0.19"
@@ -54,10 +58,16 @@ MANIFEST = {
 
 async def main():
     stored = KEY_FILE.read_text().strip() if KEY_FILE.exists() else None
-    uri = f"ws://{HOST}:3000"
+    # webOS 23 refuses plaintext on 3000: it accepts the TCP connection then
+    # closes it without an HTTP response. Port 3001 is TLS with a self-signed
+    # certificate, so verification has to be off.
+    uri = f"wss://{HOST}:3001"
+    context = ssl.create_default_context()
+    context.check_hostname = False
+    context.verify_mode = ssl.CERT_NONE
     print(f"→ connecting to {uri}")
 
-    async with websockets.connect(uri, max_size=None) as ws:
+    async with websockets.connect(uri, ssl=context, max_size=None) as ws:
         payload = {"forcePairing": False, "pairingType": "PROMPT", "manifest": MANIFEST}
         if stored:
             payload["client-key"] = stored
@@ -102,4 +112,5 @@ async def main():
             print(json.dumps(reply.get("payload", {}), indent=2)[:2000])
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())

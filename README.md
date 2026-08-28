@@ -65,8 +65,15 @@ TV](#setting-up-the-tv).
 
 ### SSAP, for everything else
 
-Once awake, the TV listens on port 3000 for **SSAP** (Simple Service Access
-Protocol), a JSON-over-WebSocket protocol. Messages carry a `type`, a
+Once awake, the TV serves **SSAP** (Simple Service Access Protocol), a
+JSON-over-WebSocket protocol, on port 3001 over TLS.
+
+> **Port 3000 does not work on webOS 23**, despite being open. It completes the
+> TCP handshake and then closes the connection without sending an HTTP
+> response, so the WebSocket upgrade never happens. Only `wss://` on 3001
+> speaks SSAP, using a self-signed certificate the app has to accept
+> explicitly. Older webOS releases do serve 3000, which is why the plaintext
+> option survives in Settings — but TLS is the default. Messages carry a `type`, a
 caller-chosen `id`, a `uri` naming the service, and an optional `payload`; the
 TV replies asynchronously quoting the same `id`. `SSAPClient.swift` keeps a
 table of in-flight requests keyed by that id so replies can be matched to
@@ -120,7 +127,7 @@ Everything deployment-specific lives in **`TVRemote/App/Config.swift`**:
 static let defaultHost      = "172.29.0.19"        // DHCP reservation on the router
 static let defaultMAC       = "20:28:bc:bb:5d:60"  // target of the magic packet
 static let defaultBroadcast = "172.29.0.255"       // where the magic packet is sent
-static let defaultUseTLS    = false                // ws://:3000 vs wss://:3001
+static let defaultUseTLS    = true                 // wss://:3001; 3000 is dead on webOS 23
 ```
 
 Each is also overridable at runtime from the app's Settings screen, so a
@@ -175,8 +182,8 @@ Two settings on the television matter:
 ## Poking the TV by hand
 
 `scripts/probe.py` performs the same handshake as the app and dumps what the TV
-reports, which is how the payload shapes in `TVController` were checked against
-a real set:
+reports. It is how the payload shapes in `TVController` were checked against a
+real set — and how the port 3000 dead end above was found:
 
 ```sh
 python3 scripts/probe.py [host]

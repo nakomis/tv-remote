@@ -33,11 +33,16 @@ enum Config {
 
     /// webOS speaks SSAP (Simple Service Access Protocol) over a WebSocket.
     ///
-    /// Port 3000 is plaintext `ws://`, port 3001 is `wss://` with a
-    /// self-signed certificate. Both are open on webOS 23. Plaintext is the
-    /// default: this traffic never leaves the LAN, and it avoids having to
-    /// pin an untrusted certificate.
-    static let defaultUseTLS = false
+    /// Port 3000 is plaintext `ws://` and port 3001 is `wss://` with a
+    /// self-signed certificate. **Both ports accept TCP connections on webOS
+    /// 23, but only 3001 actually speaks SSAP** — 3000 completes the TCP
+    /// handshake and then closes without sending an HTTP response, so the
+    /// WebSocket upgrade never happens. Verified against an LG B3 on
+    /// 2026-08-28 with `scripts/probe.py`.
+    ///
+    /// The plaintext option is kept because older webOS releases do serve
+    /// 3000, but TLS is the working default here.
+    static let defaultUseTLS = true
 
     static let plainPort = 3000
     static let tlsPort = 3001

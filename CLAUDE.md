@@ -8,9 +8,15 @@ Wake-on-LAN, power off / volume / mute / input switching via SSAP.
 - **Wake-on-LAN** is the only way to turn the set *on*. In standby there is no
   IP stack, so SSAP cannot help — only a broadcast magic packet at the link
   layer will do it. Requires *Mobile TV On* enabled on the TV.
-- **SSAP** (JSON over WebSocket, port 3000 plain / 3001 TLS) handles everything
-  once the TV is awake. Requests carry a caller-chosen `id`; replies quote it
-  back asynchronously, so `SSAPClient` matches them via a pending table.
+- **SSAP** (JSON over WebSocket) handles everything once the TV is awake.
+  Requests carry a caller-chosen `id`; replies quote it back asynchronously, so
+  `SSAPClient` matches them via a pending table.
+
+  **Use port 3001 over TLS.** Port 3000 is open on webOS 23 and accepts TCP,
+  but then closes without an HTTP response — the WebSocket upgrade never
+  completes. This looks like a network fault and is not one. The TV's
+  certificate is self-signed, so `SSAPClient` installs a delegate that accepts
+  it. Do not "fix" the default back to plaintext.
 
 Do **not** rebuild this on top of dev-mode SSH and `luna-send`. It works, but
 webOS developer mode sessions expire after ~50 hours and have to be re-armed
@@ -76,7 +82,12 @@ The simulator shares the Mac's network, so it can reach the real TV.
   `rejected` failure so the next attempt falls back to the pairing prompt
   instead of failing forever.
 - webOS moved volume fields into a nested `volumeStatus` object in later
-  releases but some models still send the flat ones. Both are read.
+  releases but some models still send the flat ones. Both are read. The B3
+  sends the nested form: `payload.volumeStatus.{volume,muteStatus}`.
+- `setVolume` makes webOS flash its on-screen volume bar even when the value is
+  unchanged. Seeing the overlay does not mean the level moved.
+- Inputs carry friendly labels from HDMI SPD data — HDMI 3 reports as
+  "PS5 Game Console", not "HDMI 3". Render `label`, never the `id`.
 
 ## Architecture diagrams
 

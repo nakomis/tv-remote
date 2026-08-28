@@ -40,7 +40,7 @@ struct SettingsView: View {
                 Section {
                     Toggle("Use TLS", isOn: $settings.useTLS)
                 } footer: {
-                    Text("Off uses ws:// on port \(Config.plainPort); on uses wss:// on port \(Config.tlsPort) with the TV's self-signed certificate. Plaintext is fine on a home network and is the more widely supported of the two.")
+                    Text("On uses wss:// on port \(Config.tlsPort) with the TV's self-signed certificate; off uses ws:// on port \(Config.plainPort). webOS 23 only answers on the TLS port — plaintext accepts the connection and then drops it — so leave this on unless the TV is an older model.")
                 }
 
                 Section {
