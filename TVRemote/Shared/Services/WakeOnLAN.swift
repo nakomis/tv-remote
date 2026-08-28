@@ -52,14 +52,28 @@ enum WakeOnLAN {
 
     /// Broadcasts the magic packet for `mac`.
     ///
-    /// The packet goes to the subnet broadcast address and to the global
-    /// broadcast address, on both of the conventional WoL ports (9, the
-    /// discard port, and 7, echo). Routers and TV firmware vary in which
-    /// combination they honour and the packets are 102 bytes each, so sending
-    /// all four is cheaper than diagnosing which one was needed.
-    static func wake(mac: String, broadcast: String) async throws {
+    /// Targets, in order: the broadcast address derived from whichever local
+    /// interface is actually on the television's subnet, then the configured
+    /// one, then the global broadcast address — each on both conventional WoL
+    /// ports (9, discard, and 7, echo). Firmware and routers vary in which
+    /// they honour, and the packets are 102 bytes, so sending to all of them
+    /// is cheaper than diagnosing which was needed.
+    ///
+    /// The derived address comes first because a configured one is a guess
+    /// about the netmask, and a wrong guess fails silently: a "broadcast"
+    /// address that is not one gets treated as an ordinary unicast to a
+    /// non-existent host and dropped, with no error anywhere.
+    @discardableResult
+    static func wake(mac: String, host: String, broadcast: String) async throws -> [String] {
         let packet = try magicPacket(for: mac)
-        let targets = [broadcast, "255.255.255.255"]
+
+        var targets: [String] = []
+        if let derived = NetworkInterfaces.broadcastAddress(reaching: host) {
+            targets.append(derived)
+        }
+        for candidate in [broadcast, "255.255.255.255"] where !targets.contains(candidate) {
+            targets.append(candidate)
+        }
         let ports: [NWEndpoint.Port] = [9, 7]
 
         var lastFailure: String?
@@ -79,6 +93,7 @@ enum WakeOnLAN {
         if !delivered {
             throw Failure.sendFailed(lastFailure ?? "no route to the broadcast address")
         }
+        return targets
     }
 
     private static func send(_ packet: Data, to host: String, port: NWEndpoint.Port) async throws {

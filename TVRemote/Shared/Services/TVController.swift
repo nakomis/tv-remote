@@ -86,8 +86,13 @@ final class TVController {
         isWaking = true
         defer { isWaking = false }
 
+        let targets: [String]
         do {
-            try await WakeOnLAN.wake(mac: settings.mac, broadcast: settings.broadcast)
+            targets = try await WakeOnLAN.wake(
+                mac: settings.mac,
+                host: settings.host,
+                broadcast: settings.broadcast
+            )
         } catch {
             lastError = error.localizedDescription
             return
@@ -103,7 +108,12 @@ final class TVController {
             if state.isConnected { return }
             if case .pairing = state { return }
         }
-        state = .failed("The TV did not wake. Check that Settings → General → Devices → TV Management → Mobile TV On is enabled.")
+        // Name the addresses actually used: a magic packet that goes nowhere
+        // reports no error, so the useful diagnostic is where it was sent.
+        state = .failed("""
+            The TV did not wake. The magic packet for \(settings.mac) went to \(targets.joined(separator: ", ")).
+            Check that Settings → General → Devices → TV Management → Mobile TV On is enabled on the TV.
+            """)
     }
 
     func powerOff() async {

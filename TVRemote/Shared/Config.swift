@@ -21,13 +21,19 @@ enum Config {
     /// awake, or from Settings → Support → TV Information on the TV itself.
     static let defaultMAC = "20:28:bc:bb:5d:60"
 
-    /// The broadcast address the magic packet is sent to.
+    /// Fallback broadcast address for the magic packet.
     ///
-    /// Wake-on-LAN is a link-layer trick: the sleeping TV has no IP stack
-    /// listening, so the packet has to be broadcast to the whole subnet. This
-    /// assumes a /24 — for `172.29.0.19` that is `172.29.0.255`. The app also
-    /// sends to the global broadcast address as a fallback.
-    static let defaultBroadcast = "172.29.0.255"
+    /// Normally unused: `WakeOnLAN` derives the right address from whichever
+    /// local interface is on the television's subnet, which is the only way to
+    /// get it right without knowing the netmask. This value is the fallback
+    /// for when no interface matches.
+    ///
+    /// The home network is a **/16** (`netmask 0xffff0000`), so the broadcast
+    /// address is `172.29.255.255`. It is emphatically not `172.29.0.255` —
+    /// that is the /24 answer, and on a /16 it is just an ordinary host
+    /// address that nothing replies to, so the packet is silently dropped and
+    /// the television never wakes.
+    static let defaultBroadcast = "172.29.255.255"
 
     // MARK: - SSAP transport
 
