@@ -19,21 +19,9 @@ struct VolumeControl: View {
                     .foregroundStyle(Theme.mutedForeground)
             }
 
-            Slider(
-                value: Binding(
-                    get: { scrubbing ?? Double(controller.volume) },
-                    set: { scrubbing = $0 }
-                ),
-                in: 0...100,
-                step: 1,
-                onEditingChanged: { editing in
-                    guard !editing, let value = scrubbing else { return }
-                    scrubbing = nil
-                    Task { await controller.setVolume(Int(value.rounded())) }
-                }
-            )
-            .tint(Theme.accent)
-            .disabled(!controller.state.isConnected)
+            volumeSlider
+                .tint(Theme.accent)
+                .disabled(!controller.state.isConnected)
 
             HStack(spacing: 10) {
                 stepButton("minus", label: "Volume down") {
@@ -69,6 +57,55 @@ struct VolumeControl: View {
             RoundedRectangle(cornerRadius: Theme.cardRadius).stroke(Theme.border, lineWidth: 1)
         }
         .opacity(controller.state.isConnected ? 1 : 0.45)
+    }
+
+
+    private var level: Binding<Double> {
+        Binding(
+            get: { scrubbing ?? Double(controller.volume) },
+            set: { scrubbing = $0 }
+        )
+    }
+
+    /// Commits the value once the drag ends, rather than on every frame —
+    /// setVolume makes webOS flash its on-screen volume bar.
+    private func commit(_ editing: Bool) {
+        guard !editing, let value = scrubbing else { return }
+        scrubbing = nil
+        Task { await controller.setVolume(Int(value.rounded())) }
+    }
+
+    /// Tick marks need `SliderTick`, which is iOS 26 / macOS 26 only, while
+    /// this project targets iOS 17 / macOS 14 — hence the availability check
+    /// rather than simply using it.
+    ///
+    /// The ticked initialiser requires a `label:` (it has no default) and
+    /// wants `ticks:` *before* `onEditingChanged:`. The label is hidden here
+    /// because the row above already says "Volume". Omitting `step:` keeps
+    /// the slider continuous —
+    /// a discrete slider draws one tick per step on macOS, which at
+    /// `0...100, step: 1` is 101 of them and reads as a smudge.
+    @ViewBuilder
+    private var volumeSlider: some View {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            Slider(
+                value: level,
+                in: 0...100,
+                label: { Text("Volume") },
+                ticks: {
+                    SliderTick("0", 0)
+                    SliderTick("20", 20)
+                    SliderTick("40", 40)
+                    SliderTick("50", 60)
+                    SliderTick("80", 80)
+                    SliderTick("100", 100)
+                },
+                onEditingChanged: commit
+            )
+            .labelsHidden()
+        } else {
+            Slider(value: level, in: 0...100, onEditingChanged: commit)
+        }
     }
 
     private var displayedVolume: Int {
