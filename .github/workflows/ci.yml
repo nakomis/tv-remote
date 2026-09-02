@@ -15,7 +15,11 @@ env:
 jobs:
   test:
     name: Build and test
-    runs-on: macos-15
+    # macOS 26, because the project uses SliderTick (iOS 26 / macOS 26).
+    # `if #available` guards the runtime, not the SDK: on an older image the
+    # symbol is not present at all and the guarded branch fails to compile
+    # with "cannot find 'SliderTick' in scope".
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
         with:
