@@ -96,7 +96,7 @@ struct VolumeControl: View {
                     SliderTick("0", 0)
                     SliderTick("20", 20)
                     SliderTick("40", 40)
-                    SliderTick("50", 60)
+                    SliderTick("60", 60)
                     SliderTick("80", 80)
                     SliderTick("100", 100)
                 },
