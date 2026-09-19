@@ -22,6 +22,17 @@ struct PowerControls: View {
             ) {
                 Task { await controller.powerOff() }
             }
+
+            PowerButton(
+                title: "NakTV",
+                tint: Theme.accent,
+                icon: "play.circle.fill",
+                isBusy: false,
+                isEnabled: controller.state.isConnected,
+                accessibilityLabel: "Launch NakTV"
+            ) {
+                Task { await controller.launchNakTV() }
+            }
         }
     }
 }
@@ -29,15 +40,17 @@ struct PowerControls: View {
 struct PowerButton: View {
     let title: String
     let tint: Color
+    var icon: String = "power"
     let isBusy: Bool
     let isEnabled: Bool
+    var accessibilityLabel: String?
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             VStack(spacing: 6) {
                 ZStack {
-                    Image(systemName: "power")
+                    Image(systemName: icon)
                         .font(.system(size: 24, weight: .semibold))
                         .opacity(isBusy ? 0 : 1)
                     if isBusy { ProgressView().controlSize(.small).tint(tint) }
@@ -59,6 +72,6 @@ struct PowerButton: View {
         }
         .buttonStyle(.plain)
         .disabled(!isEnabled)
-        .accessibilityLabel("Turn TV \(title.lowercased())")
+        .accessibilityLabel(accessibilityLabel ?? "Turn TV \(title.lowercased())")
     }
 }
