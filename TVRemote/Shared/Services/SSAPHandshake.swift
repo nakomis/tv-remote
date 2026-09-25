@@ -92,4 +92,14 @@ enum SSAP {
     static let insertText = "ssap://com.webos.service.ime/insertText"
     static let deleteCharacters = "ssap://com.webos.service.ime/deleteCharacters"
     static let sendEnterKey = "ssap://com.webos.service.ime/sendEnterKey"
+    static let launchApp = "ssap://system.launcher/launch"
+
+    /// The payload `launchApp` expects: just the target app's id.
+    ///
+    /// A function rather than a stored dictionary for the same reason
+    /// `SSAPHandshake.manifest` is computed — a stored `[String: Any]` is a
+    /// mutable global as far as Swift 6 is concerned.
+    static func launchPayload(id: String) -> [String: Any] {
+        ["id": id]
+    }
 }

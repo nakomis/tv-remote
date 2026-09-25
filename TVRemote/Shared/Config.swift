@@ -66,6 +66,15 @@ enum Config {
     /// 8-12 seconds from standby to accepting connections.
     static let wakeTimeout: Duration = .seconds(30)
 
+    // MARK: - Apps
+
+    /// The webOS app id of NakTV, a sideloaded app (repo `nakomis/naktv`).
+    ///
+    /// Launched via the NakTV button, the equivalent of the Netflix button on
+    /// a physical remote — `ssap://system.launcher/launch` with this id as
+    /// the payload.
+    static let nakTVAppId = "com.nakomis.naktv"
+
     // MARK: - Identity
 
     /// How often a disconnected app re-checks whether the TV has come back.

@@ -302,6 +302,16 @@ final class TVController {
         }
     }
 
+    // MARK: - Apps
+
+    /// Launches NakTV, the sideloaded webOS app — the equivalent of the
+    /// Netflix button on a physical remote.
+    func launchNakTV() async {
+        await perform("launching NakTV") {
+            try await self.client.request(SSAP.launchApp, payload: SSAP.launchPayload(id: Config.nakTVAppId))
+        }
+    }
+
     // MARK: - Keypad
 
     /// Sends a remote-control button press over the pointer input socket.
