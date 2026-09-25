@@ -33,12 +33,19 @@ xcodegen generate >/dev/null
 echo "==> Archiving (Release)"
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
+# Sign the archive ad hoc. Automatic signing would demand a "Mac Development"
+# certificate, which this script must not need: the app is re-signed below
+# with Developer ID when one exists, and runs ad hoc signed when it does not.
 xcodebuild archive \
   -project TVRemote.xcodeproj \
   -scheme TVRemoteMac \
   -configuration Release \
   -destination 'generic/platform=macOS' \
   -archivePath "$BUILD_DIR/TVRemote.xcarchive" \
+  CODE_SIGN_STYLE=Manual \
+  CODE_SIGN_IDENTITY=- \
+  DEVELOPMENT_TEAM= \
+  PROVISIONING_PROFILE_SPECIFIER= \
   -quiet
 
 APP_SRC="$BUILD_DIR/TVRemote.xcarchive/Products/Applications/TVRemoteMac.app"
