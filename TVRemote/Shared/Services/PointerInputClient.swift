@@ -15,11 +15,18 @@ import Foundation
 /// Because nothing is acknowledged, a failure here is silent by construction —
 /// the send succeeds whether or not the TV did anything. The only real signal
 /// is the socket closing.
+///
+/// And that signal is easy to miss. The TV closes this socket after a few
+/// idle minutes, but URLSession only notices a close while a `receive()` is
+/// pending — and writing into a half-closed TCP connection still succeeds
+/// locally. Without the receive loop below, every key press after the TV hung
+/// up "worked" and did nothing, while the socket sat in `CLOSE_WAIT`.
 actor PointerInputClient {
 
     private var task: URLSessionWebSocketTask?
     private var session: URLSession?
     private let delegate = TrustLocalTVDelegate()
+    private var closeWatcher: Task<Void, Never>?
 
     var isConnected: Bool { task != nil }
 
@@ -33,9 +40,12 @@ actor PointerInputClient {
         let task = session.webSocketTask(with: url)
         self.task = task
         task.resume()
+        watchForClose(of: task)
     }
 
     func disconnect() {
+        closeWatcher?.cancel()
+        closeWatcher = nil
         task?.cancel(with: .goingAway, reason: nil)
         task = nil
         session?.invalidateAndCancel()
@@ -67,5 +77,30 @@ actor PointerInputClient {
             disconnect()
             throw SSAPClient.Failure.transport(error.localizedDescription)
         }
+    }
+
+    /// Keeps a `receive()` outstanding so the TV closing the socket surfaces
+    /// as an error, and drops the dead task so the next press reconnects.
+    ///
+    /// The TV never sends anything on this socket, so anything that does
+    /// arrive is simply discarded.
+    private func watchForClose(of watched: URLSessionWebSocketTask) {
+        closeWatcher = Task { [weak self] in
+            while !Task.isCancelled {
+                do {
+                    _ = try await watched.receive()
+                } catch {
+                    await self?.socketClosed(watched)
+                    return
+                }
+            }
+        }
+    }
+
+    /// Only forgets `closed` if it is still the current socket, so a watcher
+    /// outliving a reconnect cannot discard its replacement.
+    private func socketClosed(_ closed: URLSessionWebSocketTask) {
+        guard task === closed else { return }
+        disconnect()
     }
 }
