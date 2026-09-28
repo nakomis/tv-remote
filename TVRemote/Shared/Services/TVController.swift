@@ -56,6 +56,7 @@ final class TVController {
             return false
         }
 
+        let previous = state
         state = .connecting
         let account = KeychainStore.account(forHost: settings.host)
 
@@ -65,6 +66,9 @@ final class TVController {
                 clientKey: KeychainStore.loadClientKey(account: account),
                 onPairingPrompt: { [weak self] in
                     Task { @MainActor in self?.state = .pairing }
+                },
+                onConnectionLost: { [weak self] in
+                    Task { @MainActor in await self?.connectionLost() }
                 }
             )
             // A failed save is not cosmetic: it means the TV will re-prompt on
@@ -84,9 +88,22 @@ final class TVController {
             if case SSAPClient.Failure.rejected = error {
                 KeychainStore.deleteClientKey(account: account)
             }
-            state = reportingFailure ? .failed(error.localizedDescription) : .connecting
+            state = reportingFailure ? .failed(error.localizedDescription) : previous.afterSilentFailure
             return false
         }
+    }
+
+    /// The socket died without anyone asking — typically a network blip.
+    ///
+    /// Previously nothing told the controller, so it went on showing
+    /// Connected, and the watcher, which only probes while disconnected,
+    /// never reconnected. Dropping to `.disconnected` hands it back to the
+    /// watcher.
+    private func connectionLost() async {
+        guard state.isConnected else { return }
+        await pointer.disconnect()
+        state = .disconnected
+        powerState = nil
     }
 
     func disconnect() async {

@@ -23,6 +23,21 @@ enum ConnectionState: Equatable, Sendable {
         }
     }
 
+    /// The state to fall back to when a connection attempt fails and the
+    /// failure is not being reported — called on the state from *before* the
+    /// attempt.
+    ///
+    /// Putting that state back matters for the background watcher: it skips
+    /// busy states, so leaving `.connecting` behind after a failed probe
+    /// parked the app there for good, with the Retry button hidden. The wake
+    /// loop, which starts from `.connecting`, keeps showing progress.
+    var afterSilentFailure: ConnectionState {
+        switch self {
+        case .connected, .pairing: .disconnected
+        default: self
+        }
+    }
+
     var describedForHuman: String {
         switch self {
         case .disconnected: "Not connected"

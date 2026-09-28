@@ -45,6 +45,7 @@ actor SSAPClient {
     private var pending: [String: CheckedContinuation<Reply, Error>] = [:]
     private var subscriptions: [String: @Sendable (Reply) -> Void] = [:]
     private var receiveLoop: Task<Void, Never>?
+    private var onConnectionLost: @Sendable () -> Void = {}
 
     // MARK: - Connection
 
@@ -56,14 +57,18 @@ actor SSAPClient {
     ///     stale it shows the on-screen prompt instead.
     ///   - onPairingPrompt: called if the TV puts its prompt on screen, so the
     ///     UI can tell the user to go and press OK.
+    ///   - onConnectionLost: called if the socket dies underneath us — the TV
+    ///     going away, or a network blip. Not called for `disconnect()`.
     /// - Returns: the client key to store. This may differ from the one passed
     ///   in, and must be persisted.
     func connect(
         to url: URL,
         clientKey: String?,
-        onPairingPrompt: @Sendable @escaping () -> Void
+        onPairingPrompt: @Sendable @escaping () -> Void,
+        onConnectionLost: @Sendable @escaping () -> Void = {}
     ) async throws -> String {
         await disconnect()
+        self.onConnectionLost = onConnectionLost
 
         let configuration = URLSessionConfiguration.ephemeral
         configuration.timeoutIntervalForRequest = 15
@@ -74,7 +79,7 @@ actor SSAPClient {
         self.task = task
         task.resume()
 
-        startReceiving()
+        startReceiving(from: task)
 
         return try await register(clientKey: clientKey, onPairingPrompt: onPairingPrompt)
     }
@@ -220,24 +225,30 @@ actor SSAPClient {
         continuation.resume(throwing: error)
     }
 
-    private func startReceiving() {
+    /// Reads from `watched` until it fails.
+    ///
+    /// The loop holds on to its own task rather than reading `self.task`, and
+    /// a failure only tears down if `watched` is still the current socket. A
+    /// reconnect cancels the old socket, whose loop then fails — and without
+    /// that check it would throw away the brand-new connection.
+    private func startReceiving(from watched: URLSessionWebSocketTask) {
         receiveLoop = Task { [weak self] in
             while !Task.isCancelled {
-                guard let self else { return }
                 do {
-                    guard let message = try await self.receiveOne() else { return }
-                    await self.handle(message)
+                    let message = try await watched.receive()
+                    await self?.handle(message)
                 } catch {
-                    await self.tearDownAfterTransportFailure(error)
+                    await self?.receiveFailed(on: watched, error)
                     return
                 }
             }
         }
     }
 
-    private func receiveOne() async throws -> URLSessionWebSocketTask.Message? {
-        guard let task else { return nil }
-        return try await task.receive()
+    private func receiveFailed(on watched: URLSessionWebSocketTask, _ error: Error) {
+        guard task === watched else { return }
+        tearDownAfterTransportFailure(error)
+        onConnectionLost()
     }
 
     private func tearDownAfterTransportFailure(_ error: Error) {
@@ -247,6 +258,8 @@ actor SSAPClient {
         pending.removeAll()
         subscriptions.removeAll()
         task = nil
+        session?.invalidateAndCancel()
+        session = nil
     }
 
     private func handle(_ message: URLSessionWebSocketTask.Message) {

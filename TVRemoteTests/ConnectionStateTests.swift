@@ -26,4 +26,19 @@ struct ConnectionStateTests {
         #expect(ConnectionState.failed("The TV said no.").describedForHuman == "The TV said no.")
         #expect(ConnectionState.pairing.describedForHuman == "Accept the prompt on the TV")
     }
+
+    @Test("A silent failure puts back the state from before the attempt")
+    func silentFailureRestoresPreviousState() {
+        // The background watcher: must stay retryable, never parked busy.
+        #expect(ConnectionState.disconnected.afterSilentFailure == .disconnected)
+        #expect(ConnectionState.failed("earlier").afterSilentFailure == .failed("earlier"))
+        // powerOn's wake loop: keeps showing progress between attempts.
+        #expect(ConnectionState.connecting.afterSilentFailure == .connecting)
+    }
+
+    @Test("A silent failure never leaves the app claiming a connection or a prompt")
+    func silentFailureNeverClaimsConnectedOrPairing() {
+        #expect(ConnectionState.connected.afterSilentFailure == .disconnected)
+        #expect(ConnectionState.pairing.afterSilentFailure == .disconnected)
+    }
 }
